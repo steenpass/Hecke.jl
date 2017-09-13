@@ -1530,9 +1530,11 @@ mutable struct GrpAbFinGen <: GrpAb
   issnf::Bool
   snf::Array{fmpz, 1}
   snf_map::Map{GrpAbFinGen, GrpAbFinGen}
+  finalized::Bool
 
   function GrpAbFinGen(R::fmpz_mat, ishnf::Bool = false)
     r = new()
+    r.finalized = false
     r.issnf = false
     r.rels = R
     if ishnf
@@ -1543,6 +1545,7 @@ mutable struct GrpAbFinGen <: GrpAb
   
   function GrpAbFinGen(R::Array{fmpz, 1}, issnf::Bool = true)
     r = new()
+    r.finalized = false
     r.issnf = issnf
     r.snf = R
     return r
@@ -1550,11 +1553,11 @@ mutable struct GrpAbFinGen <: GrpAb
   
   function GrpAbFinGen(R::Array{T, 1}, issnf::Bool = true) where T <: Integer
     r = new()
+    r.finalized = false
     r.issnf = issnf
     r.snf = map(fmpz, R)
     return r
   end
-
 end
 
 mutable struct GrpAbFinGenElem <: GrpAbElem

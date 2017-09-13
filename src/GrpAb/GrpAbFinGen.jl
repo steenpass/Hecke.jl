@@ -1,10 +1,10 @@
 ################################################################################
 #
-#             GrpAb.jl : Finitely generated abelian groups
+#         GrpAb/GrpAbFinGen.jl : Finitely generated abelian groups
 #
 # This file is part of Hecke.
 #
-# Copyright (c) 2015, 2016: Claus Fieker, Tommy Hofmann
+# Copyright (c) 2015, 2016, 2017: Claus Fieker, Tommy Hofmann
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -347,7 +347,7 @@ function +(x::GrpAbFinGenElem, y::GrpAbFinGenElem)
 
   b, m = can_map_into(GroupLattice, x.parent, y.parent)
   if b
-    return GrapAbFinGenElem(y.parent, x.coeff*m) + y
+    return GrpAbFinGenElem(y.parent, x.coeff*m) + y
   end
 
   b, m = can_map_into(GroupLattice, y.parent, x.parent)
@@ -360,7 +360,7 @@ function +(x::GrpAbFinGenElem, y::GrpAbFinGenElem)
     return GrpAbFinGenElem(G, x.coeff * m1 + y.coeff * m2)
   end
 
-  error("asd")
+  error("Cannot coerce into a common group")
 end
 
 doc"""
@@ -370,9 +370,26 @@ doc"""
 > Returns  $x - y$.
 """
 function -(x::GrpAbFinGenElem, y::GrpAbFinGenElem)
-  x.parent == y.parent || error("Elements must belong to the same group")
-  n = GrpAbFinGenElem(x.parent, x.coeff - y.coeff)
-  return n
+  if x.parent === y.parent
+    return GrpAbFinGenElem(x.parent, x.coeff - y.coeff)
+  end
+  
+  b, m = can_map_into(GroupLattice, x.parent, y.parent)
+  if b
+    return GrpAbFinGenElem(y.parent, x.coeff*m) - y
+  end
+
+  b, m = can_map_into(GroupLattice, y.parent, x.parent)
+  if b
+    return x - GrpAbFinGenElem(x.parent, y.coeff*m)
+  end
+
+  b, G, m1, m2 = can_map_into_overstructure(GroupLattice, x.parent, y.parent)
+  if b
+    return GrpAbFinGenElem(G, x.coeff * m1 - y.coeff * m2)
+  end
+
+  error("Cannot coerce into a common group")
 end
 
 doc"""
@@ -903,7 +920,14 @@ function sub(G::GrpAbFinGen, s::Array{GrpAbFinGenElem, 1})
   S = AbelianGroup(r)
   mS = GrpAbFinGenMap(S, p, sub(m, nrels(p)+1:rows(h), 1:ngens(p)))
 
-  #append!(GroupLattice, mS)
+  # Put both in the Group lattice and attach some finalizers
+  append!(GroupLattice, mS)
+  finalizer(S, _delete_and_clean_up!)
+  S.finalized = true
+  if !G.finalized
+    finalizer(G, _delete_and_clean_up!)
+    G.finalized = true
+  end
 
   return S, mS
 end
@@ -966,6 +990,15 @@ function quo(G::GrpAbFinGen, s::Array{GrpAbFinGenElem, 1})
   Q = AbelianGroup(m)
   I = MatrixSpace(FlintZZ, ngens(p), ngens(p))(1)
   m = GrpAbFinGenMap(p, Q, I, I)
+  
+  append!(GroupLattice, m)
+  finalizer(Q, _delete_and_clean_up!)
+  Q.finalized = true
+  if !G.finalized
+    finalizer(G, _delete_and_clean_up!)
+    G.finalized = true
+  end
+
   return Q, m
 end
 
@@ -1087,7 +1120,6 @@ function hom(A::Array{GrpAbFinGenElem, 1}, B::Array{GrpAbFinGenElem, 1}; check::
       error("data does not define a homomorphism")
     end
   end
-
 
   M = vcat([hcat(A[i].coeff, B[i].coeff) for i=1:length(A)])
   RA = rels(GA)
