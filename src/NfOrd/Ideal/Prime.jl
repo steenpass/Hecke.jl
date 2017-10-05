@@ -340,7 +340,7 @@ function prime_dec_index(O::NfOrd, p::Union{Integer, fmpz}, degree_limit::Int = 
     end
 
     # The following does not work if there is only one prime ideal
-    if length(AA) > 1 && (1-1/p)^degree(O) < 0.1
+    if length(AA) > 1 && (1-1/BigInt(p))^degree(O) < 0.1
       # This is rougly Algorithm 6.4 of Belabas' "Topics in comptutational algebraic
       # number theory".
 
@@ -677,28 +677,27 @@ end
 #
 ################################################################################
 
-mutable struct quoringalg <: Ring
+mutable struct quoringalg{T} <: Ring
   base_order::NfOrd
   ideal::NfOrdIdl
-  prime::Int
+  prime::T
   basis::Array{NfOrdElem, 1}
 
-  function quoringalg(O::NfOrd, I::NfOrdIdl, p::Int)
-    z = new()
+  function quoringalg(O::NfOrd, I::NfOrdIdl, p::T) where {T}
+    z = new{T}()
     z.base_order = O
     z.ideal = I
     z.prime = p
 
     # compute a basis
-    Rp = ResidueRing(FlintZZ, UInt(p))
+    Rp = ResidueRing(FlintZZ, p)
     Amodp = MatrixSpace(Rp, degree(O), degree(O))(basis_mat(I))
     Amodp = vcat(Amodp, MatrixSpace(Rp, 1, degree(O))())
     Amodp[1,1] = 1
     Amodp = sub(Amodp, 1:degree(O), 1:degree(O))
 
     # I think rref can/should also return the rank
-    B = rref(Amodp)
-    r = rank(B)
+    r, B = _rref(Amodp)
     C = zero(MatrixSpace(Rp, degree(O)-r, degree(O)))
     BB = Array{NfOrdElem}(degree(O) - r)
     pivots = Array{Int}(0)
@@ -780,6 +779,12 @@ end
 function ^(x::quoelem, y::Int)
   z = mod(x.elem^y, x.parent.ideal)
   return quoelem(x.parent, z)
+end
+
+function ^(x::quoelem, y::Union{Integer, fmpz})
+  # Do something stupid
+  R, m = quo(x.parent.base_order, x.parent.ideal)
+  return quoelem(x.parent, (m\(m(x.elem)^y)))
 end
 
 function ==(x::quoelem, y::quoelem)

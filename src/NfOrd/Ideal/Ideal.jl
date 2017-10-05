@@ -1029,14 +1029,14 @@ doc"""
 > just $\{ x \in \mathcal O \mid \exists k \in \mathbf Z_{\geq 0} \colon x^k
 > \in p\mathcal O \}$. It is not checked that $p$ is prime.
 """
-function pradical(O::NfOrd, p::fmpz)
+function pradical(O::NfOrd, p::Union{Integer, fmpz})
   j = clog(fmpz(degree(O)), p)
   local m::fmpz_mat
 
   @assert p^(j-1) < degree(O)
   @assert degree(O) <= p^j
 
-  R = ResidueRing(FlintZZ, UInt(p))
+  R = ResidueRing(FlintZZ, p)
   A = MatrixSpace(R, degree(O), degree(O))()
   for i in 1:degree(O)
     t = powermod(basis(O)[i], p^j, p)
@@ -1062,18 +1062,18 @@ function pradical(O::NfOrd, p::fmpz)
   return ideal(O, r)
 end
 
-doc"""
-***
-    pradical(O::NfOrd, p::Integer) -> NfOrdIdl
-
-> Given a prime number $p$, this function returns the $p$-radical
-> $\sqrt{p\mathcal O}$ of $\mathcal O$, which is
-> just $\{ x \in \mathcal O \mid \exists k \in \mathbf Z_{\geq 0} \colon x^k
-> \in p\mathcal O \}$. It is not checked that $p$ is prime.
-"""
-function pradical(O::NfOrd, p::Integer)
-  return pradical(O, fmpz(p))
-end
+#doc"""
+#***
+#    pradical(O::NfOrd, p::Integer) -> NfOrdIdl
+#
+#> Given a prime number $p$, this function returns the $p$-radical
+#> $\sqrt{p\mathcal O}$ of $\mathcal O$, which is
+#> just $\{ x \in \mathcal O \mid \exists k \in \mathbf Z_{\geq 0} \colon x^k
+#> \in p\mathcal O \}$. It is not checked that $p$ is prime.
+#"""
+#function pradical(O::NfOrd, p::Integer)
+#  return pradical(O, fmpz(p))
+#end
 
 ################################################################################
 #
