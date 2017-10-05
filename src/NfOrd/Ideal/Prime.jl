@@ -216,38 +216,51 @@ doc"""
 > Note that in this case it may happen that $p\mathcal O$ is not the product of the
 > $\mathfrak p_i^{e_i}$.
 """
-function prime_decomposition(O::NfOrd, p::Integer, degree_limit::Int = 0, lower_limit::Int = 0)
-  if mod(fmpz(index(O)),p) == 0
+function prime_decomposition(O::NfOrd, p::Union{Integer, fmpz}, degree_limit::Int = 0, lower_limit::Int = 0)
+  if mod(index(O),fmpz(p)) == 0
     return prime_dec_index(O, p, degree_limit, lower_limit)
   end
   return prime_dec_nonindex(O, p, degree_limit, lower_limit)
 end
 
-function prime_dec_nonindex(O::NfOrd, p::Integer, degree_limit::Int = 0, lower_limit::Int = 0)
+function _fac_and_lift(f::fmpz_poly, p, degree_limit, lower_limit)
+  if typeof(p) == fmpz && nbits(p) < 64
+    return _fac_and_lift(f, Int(p), degree_limit, lower_limit)
+  end
+  Zx = parent(f)
+  Zmodpx = PolynomialRing(ResidueRing(FlintZZ, p, cached = false), "y", cached = false)[1]
+  fmodp = Zmodpx(f)
+  fac = factor(fmodp)
+  lifted_fac = Array{Tuple{fmpz_poly, Int}, 1}()
+  for (k, v) in fac
+    if degree(k) <= degree_limit && degree(k) >= lower_limit
+      push!(lifted_fac, (lift(Zx, k), v))
+    end
+  end
+  return lifted_fac
+end
+
+function prime_dec_nonindex(O::NfOrd, p::Union{Integer, fmpz}, degree_limit::Int = 0, lower_limit::Int = 0)
   K = nf(O)
   f = K.pol
   I = IdealSet(O)
   R = parent(f)
   Zx, x = PolynomialRing(FlintIntegerRing(),"x")
   Zf = Zx(f)
-  Zmodpx = PolynomialRing(ResidueRing(FlintIntegerRing(), p, cached=false), "y", cached=false)[1]
-  fmodp = Zmodpx(Zf)
-  fac = factor(fmodp)
-  _fac = Dict{typeof(fmodp), Int}()
+
   if degree_limit == 0
     degree_limit = degree(K)
   end
-  for (k,v) in fac
-    if degree(k) <= degree_limit && degree(k) >= lower_limit
-      _fac[k] = v
-    end
-  end
-  fac = _fac
+
+  fac = _fac_and_lift(Zf, p, degree_limit, lower_limit)
+
   result = Array{Tuple{typeof(I()),Int}}(length(fac))
-  k = 1
-  for (fi, ei) in fac
-    ideal = ideal_from_poly(O, p, fi, ei)
-    t = parent(f)(lift(Zx,fi))
+
+  for k in 1:length(fac)
+    fi = fac[k][1]
+    ei = fac[k][2]
+    #ideal = ideal_from_poly(O, p, fi, ei)
+    t = parent(f)(fi)
     b = K(t)
     ideal = I()
     ideal.gen_one = p
@@ -290,7 +303,7 @@ function prime_dec_nonindex(O::NfOrd, p::Integer, degree_limit::Int = 0, lower_l
   return result
 end
 
-function prime_dec_index(O::NfOrd, p::Int, degree_limit::Int = 0, lower_limit::Int = 0)
+function prime_dec_index(O::NfOrd, p::Union{Integer, fmpz}, degree_limit::Int = 0, lower_limit::Int = 0)
   if degree_limit == 0
     degree_limit = degree(O)
   end
@@ -407,6 +420,7 @@ function uniformizer(P::NfOrdIdl)
       end
     end
   end
+  return z
 end
 
 # Belabas p. 40
