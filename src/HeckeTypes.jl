@@ -725,6 +725,7 @@ mutable struct NfOrdElem <: RingElem
     z.elem_in_nf = a
     z.has_coord = true
     z.elem_in_basis = arr
+    @assert  z.elem_in_nf == dot(O.basis_nf, arr)
     return z
   end
 
@@ -734,6 +735,7 @@ mutable struct NfOrdElem <: RingElem
     z.has_coord = true
     z.elem_in_basis = arr
     z.parent = O
+    @assert  z.elem_in_nf == dot(O.basis_nf, arr)
     return z
   end
 
@@ -742,7 +744,9 @@ mutable struct NfOrdElem <: RingElem
   end
 
   function NfOrdElem(x::NfOrdElem)
-    return deepcopy(x)  ### Check parent?
+    y = deepcopy(x)  ### Check parent?
+    check_elem(y)
+    return y
   end
 end
 

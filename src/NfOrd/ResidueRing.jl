@@ -193,8 +193,12 @@ function *(x::NfOrdQuoRingElem, y::NfOrdQuoRingElem)
 end
 
 function mul!(z::NfOrdQuoRingElem, x::NfOrdQuoRingElem, y::NfOrdQuoRingElem)
+  #return x*y
+  check_elem(z.elem)
   mul!(z.elem, x.elem, y.elem)
+  #return parent(z)(z.elem)
   mod!(z.elem, parent(z))
+  check_elem(z.elem)
   return z
 end
 
@@ -231,6 +235,7 @@ end
 #^(a::NfOrdQuoRingElem, f::Integer) = a^fmpz(f)
 
 function ^(a::NfOrdQuoRingElem, b::Int)
+  check_elem(a.elem)
   if b == 0
     return one(parent(a))
   elseif b == 1
@@ -238,6 +243,7 @@ function ^(a::NfOrdQuoRingElem, b::Int)
   else
     if b < 0
       a = inv(a)
+      check_elem(a.elem)
       b = -b
     end
     bit = ~((~UInt(0)) >> 1)
@@ -245,14 +251,23 @@ function ^(a::NfOrdQuoRingElem, b::Int)
       bit >>= 1
     end
     z = deepcopy(a)
+    check_elem(z.elem)
+    check_elem(a.elem)
     bit >>= 1
     while bit != 0
       z = mul!(z, z, z)
+      check_elem(z.elem)
+      check_elem(a.elem)
+
       if (UInt(bit) & b) != 0
         z = mul!(z, z, a)
+        check_elem(z.elem)
+        check_elem(a.elem)
+
       end
       bit >>= 1
     end
+    check_elem(z.elem)
     return z
   end
 end

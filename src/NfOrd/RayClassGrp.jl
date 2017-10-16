@@ -739,6 +739,7 @@ function prime_part_multgrp_mod_p(p::NfOrdIdl, prime::Int)
   return mQ\g , [powerp], disclog
 end
 
+global BLA = []
 
 function _mult_grp(Q::NfOrdQuoRing, p::Integer)
 

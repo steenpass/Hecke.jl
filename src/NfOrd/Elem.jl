@@ -186,14 +186,34 @@ end
 #
 ################################################################################
 
+function check_elem(a)
+  if a.has_coord
+    if a != dot(a.elem_in_basis, basis(parent(a)))
+      global BLA
+      push!(BLA, (a, deepcopy(a)))
+      error("Element is inconsistent")
+    end
+  end
+end
+
 function assure_has_coord(a::NfOrdElem)
   if a.has_coord
+    if a != dot(a.elem_in_basis, basis(parent(a)))
+      global BLA
+      push!(BLA, (a, deepcopy(a)))
+      error("DASDSAD_1323")
+    end
     return nothing
   else
     (x, y) = _check_elem_in_order(a.elem_in_nf, parent(a))
     !x && error("Not a valid order element")
     a.elem_in_basis = y
     a.has_coord = true
+    if a != dot(a.elem_in_basis, basis(parent(a)))
+      global BLA
+      push!(BLA, (a, deepcopy(a)))
+      error("DASDSAD_23123")
+    end
     return nothing
   end
 end
@@ -204,6 +224,8 @@ end
 #
 ################################################################################
 
+global BLA = []
+
 doc"""
 ***
     elem_in_basis(a::NfOrdElem) -> Array{fmpz, 1}
@@ -212,7 +234,15 @@ doc"""
 """
 function elem_in_basis(a::NfOrdElem, copy::Type{Val{T}} = Val{true}) where {T}
   assure_has_coord(a)
+  
+  if a != dot(a.elem_in_basis, basis(parent(a)))
+    global BLA
+    push!(BLA, (a, deepcopy(a)))
+    error("DASDSAD")
+  end
+
   @hassert :NfOrd 2 a == dot(a.elem_in_basis, basis(parent(a)))
+
   if copy == Val{true}
     return deepcopy(a.elem_in_basis)
   else
@@ -770,6 +800,7 @@ end
 @inline function mul!(z::NfOrdElem, x::NfOrdElem, y::NfOrdElem)
   mul!(z.elem_in_nf, x.elem_in_nf, y.elem_in_nf)
   z.has_coord = false
+  check_elem(z)
   return z
 end
 
@@ -780,6 +811,7 @@ function addeq!(z::NfOrdElem, x::NfOrdElem)
       add!(z.elem_in_basis[i], z.elem_in_basis[i], x.elem_in_basis[i])
     end
   end
+  check_elem(z)
   return z
 end
 
@@ -803,6 +835,7 @@ for T in [Integer, fmpz]
 #        z.has_coord = false
 #      end
       z.has_coord = false
+      check_elem(z)
       return z
     end
 
@@ -816,6 +849,7 @@ for T in [Integer, fmpz]
     @inline function add!(z::NfOrdElem, x::NfOrdElem, y::$T)
       add!(z.elem_in_nf, x.elem_in_nf, y)
       z.has_coord = false
+      check_elem(z)
       return z
     end
 

@@ -1030,6 +1030,7 @@ function mod!(x::NfOrdElem, c::Union{fmpz_mat, Array{fmpz, 2}}, preinv::Array{fm
 
   O = parent(x)
   a = elem_in_basis(x, Val{false}) # this is already a copy
+  check_elem(x)
 
   q = fmpz()
   r = fmpz()
@@ -1050,6 +1051,10 @@ function mod!(x::NfOrdElem, c::Union{fmpz_mat, Array{fmpz, 2}}, preinv::Array{fm
     mul!(t, B[i], a[i])
     add!(x.elem_in_nf, x.elem_in_nf, t)
   end
+
+  check_elem(x)
+  
+  @hassert :NfOrd 2 x.elem_in_nf == dot(x.elem_in_basis, O.basis_nf)
 
   @hassert :NfOrd 2 x.elem_in_nf == dot(a, O.basis_nf)
 
@@ -1075,14 +1080,24 @@ end
 function mod!(x::NfOrdElem, Q::NfOrdQuoRing)
   O = parent(x)
   a = elem_in_basis(x, Val{false}) # this is already a copy
+  check_elem(x)
 
   y = ideal(Q)
 
   if isdefined(y, :princ_gen_special) && y.princ_gen_special[1] != 0
     for i in 1:length(a)
+      # TH
+      # TODO: This is stupid. Don't do this. Make a branch.
       a[i] = mod(a[i], y.princ_gen_special[1 + y.princ_gen_special[1]])
+      t = nf(O)()
+      B = O.basis_nf
+      zero!(x.elem_in_nf)
+      for i in 1:degree(O)
+        mul!(t, B[i], a[i])
+        add!(x.elem_in_nf, x.elem_in_nf, t)
+      end
     end
-    return O(a)
+    return x
   end
 
   return mod!(x, Q.basis_mat_array, Q.preinvn)
@@ -1094,7 +1109,8 @@ end
 #
 ################################################################################
 
-# TH:
+# TH
+# TODO:
 # There is some annoying type instability since we pass to nmod_mat or
 # something else. Should use the trick with the function barrier.
 doc"""

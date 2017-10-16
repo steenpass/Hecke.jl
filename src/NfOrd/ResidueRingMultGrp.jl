@@ -690,6 +690,7 @@ function snf_gens_rels_log(gens::Vector, rels::fmpz_mat, dlog::Function)
   S,mS=snf(G)
   
   function disclog(x)
+
     y=dlog(x)
     z=fmpz[s for s in y]
     a=(mS\(G(z)))
