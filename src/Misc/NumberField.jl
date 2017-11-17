@@ -1407,6 +1407,8 @@ doc"""
 function conjugates_arb_complex(x::nf_elem, abs_tol::Int)
 end
 
+global _DEBUG = []
+
 doc"""
 ***
     conjugates_arb_log(x::nf_elem, abs_tol::Int) -> Array{arb, 1}
@@ -1456,6 +1458,20 @@ function conjugates_arb_log(x::nf_elem, abs_tol::Int)
       return conjugates_arb_log(x, abs_tol)
     end
   end
+  #global _DEBUG
+  #for i in 1:r1 + r2
+  #  #@show abs_tol
+  #  w = arb_round(z[i], abs_tol + 13)
+  #  if !radiuslttwopower(w, -abs_tol)
+  #    #@show z[i]
+  #    @show abs_tol
+  #    @show abs_tol + 3
+  #    #@show w
+  #    push!(_DEBUG, (deepcopy(z[i]), abs_tol))
+  #  end
+  #  @assert radiuslttwopower(w, -abs_tol)
+  #  z[i] = w
+  #end
   return z
 end
 

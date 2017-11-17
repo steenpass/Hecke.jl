@@ -283,3 +283,20 @@ function radiuslttwopower(x::acb, e::Int)
   return ok
 end
 
+function arb_round(x::arb, p::Int)
+  z = ArbField(p)()
+  ccall((:arb_set_round, :libarb), Void, (Ptr{Nemo.arb}, Ptr{Nemo.arb}, Int), &z, &x, p)
+  return z
+end
+
+function arb_bits(x::arb)
+  return ccall((:arb_bits, :libarb), Int, (Ptr{Nemo.arb}, ), &x)
+end
+
+function arb_rel_error_bits(x::arb)
+  return ccall((:arb_rel_error_bits, :libarb), Int, (Ptr{Nemo.arb}, ), &x)
+end
+
+function arb_rel_accuracy(x::arb)
+  return ccall((:arb_rel_accuracy_bits, :libarb), Int, (Ptr{Nemo.arb}, ), &x)
+end
