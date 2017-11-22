@@ -289,6 +289,12 @@ function arb_round(x::arb, p::Int)
   return z
 end
 
+function arb_round!(z::arb, x::arb, p::Int)
+  ccall((:arb_set_round, :libarb), Void, (Ptr{Nemo.arb}, Ptr{Nemo.arb}, Int), &z, &x, p)
+  z.parent = ArbField(p)
+  return z
+end
+
 function arb_bits(x::arb)
   return ccall((:arb_bits, :libarb), Int, (Ptr{Nemo.arb}, ), &x)
 end
@@ -299,4 +305,44 @@ end
 
 function arb_rel_accuracy(x::arb)
   return ccall((:arb_rel_accuracy_bits, :libarb), Int, (Ptr{Nemo.arb}, ), &x)
+end
+
+function set!(z::arb, x::arb)
+  ccall((:arb_set, :libarb), Void, (Ptr{Nemo.arb}, Ptr{Nemo.arb}), &z, &x)
+  return z
+end
+
+function expand!(x::arb, max_radius_2exp::Int)
+  if arb_rel_accuracy(x) < 0
+    # Radius has less precision then the midpoint
+    # Think of 0.100001 +/- 10
+    # Reducing the precision of the midpoint won't help.
+    return x
+  end
+  z = deepcopy(x)
+  p = arb_bits(x)
+  if p == 0
+    if isexact(x)
+      return x
+    else
+      throw(error("Something is wrong in expand! for element $x"))
+    end
+  end
+  q = div(p, 2)
+  y = arb_round(x, q)
+  while radiuslttwopower(y, max_radius_2exp)
+    q = div(q, 2)
+    set!(x, y)
+    y = arb_round!(y, y, q)
+  end
+  @assert radiuslttwopower(x, max_radius_2exp)
+  return x
+end
+
+function expand(x::arb, max_radius_2exp::Int)
+  #@show x
+  #@show max_radius_2exp
+  z = deepcopy(x)
+  expand!(z, max_radius_2exp)
+  return z
 end

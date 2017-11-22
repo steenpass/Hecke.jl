@@ -57,6 +57,7 @@ function scaled_log_matrix(u::Array{T, 1}, prec::Int = 32) where T
         error("cannot do lll on units")
         break
       end
+      return scaled_log_matrix(u, prec)
     end
     for j in 1:length(c)
       tt = fmpz()
@@ -76,8 +77,9 @@ function row_norms(A::fmpz_mat)
   return [row_norm(A, i) for i=1:rows(A)]
 end
 
-
 function reduce(u::Array{T, 1}, prec::Int = 32) where T
+  #global _DEBUG
+  #push!(_DEBUG, (u, prec))
   r = length(u)
   if r == 0
     return u
