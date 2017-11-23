@@ -289,6 +289,14 @@ function arb_round(x::arb, p::Int)
   return z
 end
 
+function arb_trim(x::arb)
+  z = arb()
+  ccall((:arb_trim, :libarb), Void, (Ptr{Nemo.arb}, Ptr{Nemo.arb}), &z, &x)
+  z.parent = ArbField(arb_bits(z))
+  return z
+end
+
+
 function arb_round!(z::arb, x::arb, p::Int)
   ccall((:arb_set_round, :libarb), Void, (Ptr{Nemo.arb}, Ptr{Nemo.arb}, Int), &z, &x, p)
   z.parent = ArbField(p)
@@ -313,6 +321,7 @@ function set!(z::arb, x::arb)
 end
 
 function expand!(x::arb, max_radius_2exp::Int)
+  global _DEBUG
   if arb_rel_accuracy(x) < 0
     # Radius has less precision then the midpoint
     # Think of 0.100001 +/- 10

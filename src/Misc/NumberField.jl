@@ -1458,18 +1458,9 @@ function conjugates_arb_log(x::nf_elem, abs_tol::Int)
       return conjugates_arb_log(x, abs_tol)
     end
   end
-  #global _DEBUG
   for i in 1:r1 + r2
-    #@show abs_tol
-    w = expand(z[i], -abs_tol)
-  #  if !radiuslttwopower(w, -abs_tol)
-  #    #@show z[i]
-  #    @show abs_tol
-  #    @show abs_tol + 3
-  #    #@show w
-  #    push!(_DEBUG, (deepcopy(z[i]), abs_tol))
-    @assert radiuslttwopower(w, -abs_tol)
-    z[i] = w
+    expand!(z[i], -abs_tol)
+    @assert radiuslttwopower(z[i], -abs_tol)
   end
   return z
 end

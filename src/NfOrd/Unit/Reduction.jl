@@ -78,8 +78,6 @@ function row_norms(A::fmpz_mat)
 end
 
 function reduce(u::Array{T, 1}, prec::Int = 32) where T
-  #global _DEBUG
-  #push!(_DEBUG, (u, prec))
   r = length(u)
   if r == 0
     return u
