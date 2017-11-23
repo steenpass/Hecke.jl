@@ -145,10 +145,10 @@ function __init__()
   global _get_nf_conjugate_data_arb = t[1]
   global _set_nf_conjugate_data_arb = t[2]
 
-#  t = create_accessors(AnticNumberField, Dict{Int, acb_roots}, get_handle())
-#  global _get_nf_conjugate_data_arb_2 = t[1]
-#  global _set_nf_conjugate_data_arb_2 = t[2]
-#
+  t = create_accessors(AnticNumberField, Dict{Int, acb_roots}, get_handle())
+  global _get_nf_conjugate_data_arb_2 = t[1]
+  global _set_nf_conjugate_data_arb_2 = t[2]
+
 
   t = create_accessors(AnticNumberField,
                        Tuple{Array{nf_elem, 1}, nf_elem},
@@ -218,35 +218,60 @@ function conjugate_data_arb(K::AnticNumberField)
   end
 end
 
-#function conjugate_data_arb_2(K::AnticNumberField, p::Int)
-#  try
-#    c = _get_nf_conjugate_data_arb_2(K)::Dict{Int, acb_roots}
-#    if haskey(c, p)
-#      return c[p]
-#    else
-#      rootc = conjugate_data_arb(K)
-#      q = rootc.prec
-#      while q != p
-#        refine(rootc)
-#        c[q] = acb_roots(q, deepcopy(rootc.roots), deepcopy(rootc.real_roots), deepcopy(rootc.complex_roots))
-#        q = rootc.prec
-#      end
-#      return c[q]::acb_roots
-#    end
-#  catch
-#    c = Dict{Int, acb_roots}()
-#    rootc = conjugate_data_arb(K)
-#    q = rootc.prec
-#    q = rootc.prec
-#    c[q] = acb_roots(q, deepcopy(rootc.roots), deepcopy(rootc.real_roots), deepcopy(rootc.complex_roots))
-#    while q != p
-#      refine(rootc)
-#      q = rootc.prec
-#      c[q] = acb_roots(q, deepcopy(rootc.roots), deepcopy(rootc.real_roots), deepcopy(rootc.complex_roots))
-#    end
-#    return c[q]::acb_roots
-#  end
-#end
+function conjugate_data_arb_2(K::AnticNumberField, p::Int)
+  try
+    c = _get_nf_conjugate_data_arb_2(K)::Dict{Int, acb_roots}
+    if haskey(c, p)
+      return c[p]
+    else
+      rootc = conjugate_data_arb(K)
+      q = rootc.prec
+      while q < p
+        refine(rootc)
+        q = rootc.prec
+      end
+      @assert p <= q
+      rall = deepcopy(rootc.roots)
+      rreal = deepcopy(rootc.real_roots)
+      rcomplex = deepcopy(rootc.complex_roots)
+      for z in rall
+        expand!(z, -p)
+      end
+      for z in rreal
+        expand!(z, -p)
+      end
+      for z in rcomplex
+        expand!(z, -p)
+      end
+      c[p] = acb_roots(p, rall, rreal, rcomplex)
+      return c[p]::acb_roots
+    end
+  catch
+    c = Dict{Int, acb_roots}()
+    rootc = conjugate_data_arb(K)
+    q = rootc.prec
+    while q < p
+      refine(rootc)
+      q = rootc.prec
+    end
+    @assert p <= q
+    rall = deepcopy(rootc.roots)
+    rreal = deepcopy(rootc.real_roots)
+    rcomplex = deepcopy(rootc.complex_roots)
+    for z in rall
+      expand!(z, -p)
+    end
+    for z in rreal
+      expand!(z, -p)
+    end
+    for z in rcomplex
+      expand!(z, -p)
+    end
+    c[p] = acb_roots(p, rall, rreal, rcomplex)
+    _set_nf_conjugate_data_arb_2(K, c)
+    return c[p]::acb_roots
+  end
+end
 
 function _torsion_units(K::AnticNumberField)
   try

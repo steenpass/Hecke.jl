@@ -283,9 +283,15 @@ function radiuslttwopower(x::acb, e::Int)
   return ok
 end
 
-function arb_round(x::arb, p::Int)
+function round(x::arb, p::Int)
   z = ArbField(p)()
   ccall((:arb_set_round, :libarb), Void, (Ptr{Nemo.arb}, Ptr{Nemo.arb}, Int), &z, &x, p)
+  return z
+end
+
+function round(x::acb, p::Int)
+  z = AcbField(p)()
+  ccall((:acb_set_round, :libarb), Void, (Ptr{Nemo.acb}, Ptr{Nemo.acb}, Int), &z, &x, p)
   return z
 end
 
@@ -296,22 +302,27 @@ function arb_trim(x::arb)
   return z
 end
 
-
-function arb_round!(z::arb, x::arb, p::Int)
+function round!(z::arb, x::arb, p::Int)
   ccall((:arb_set_round, :libarb), Void, (Ptr{Nemo.arb}, Ptr{Nemo.arb}, Int), &z, &x, p)
   z.parent = ArbField(p)
   return z
 end
 
-function arb_bits(x::arb)
+function round!(z::acb, x::acb, p::Int)
+  ccall((:acb_set_round, :libarb), Void, (Ptr{Nemo.acb}, Ptr{Nemo.acb}, Int), &z, &x, p)
+  z.parent = AcbField(p)
+  return z
+end
+
+function bits(x::arb)
   return ccall((:arb_bits, :libarb), Int, (Ptr{Nemo.arb}, ), &x)
 end
 
-function arb_rel_error_bits(x::arb)
+function rel_error_bits(x::arb)
   return ccall((:arb_rel_error_bits, :libarb), Int, (Ptr{Nemo.arb}, ), &x)
 end
 
-function arb_rel_accuracy(x::arb)
+function rel_accuracy(x::arb)
   return ccall((:arb_rel_accuracy_bits, :libarb), Int, (Ptr{Nemo.arb}, ), &x)
 end
 
@@ -320,16 +331,32 @@ function set!(z::arb, x::arb)
   return z
 end
 
-function expand!(x::arb, max_radius_2exp::Int)
-  global _DEBUG
-  if arb_rel_accuracy(x) < 0
+function bits(x::acb)
+  return ccall((:acb_bits, :libarb), Int, (Ptr{Nemo.acb}, ), &x)
+end
+
+function rel_error_bits(x::acb)
+  return ccall((:acb_rel_error_bits, :libarb), Int, (Ptr{Nemo.acb}, ), &x)
+end
+
+function rel_accuracy(x::acb)
+  return ccall((:acb_rel_accuracy_bits, :libarb), Int, (Ptr{Nemo.acb}, ), &x)
+end
+
+function set!(z::acb, x::acb)
+  ccall((:acb_set, :libarb), Void, (Ptr{Nemo.acb}, Ptr{Nemo.acb}), &z, &x)
+  return z
+end
+
+function expand!(x::Union{arb, acb}, max_radius_2exp::Int)
+  if rel_accuracy(x) < 0
     # Radius has less precision then the midpoint
     # Think of 0.100001 +/- 10
     # Reducing the precision of the midpoint won't help.
     return x
   end
   z = deepcopy(x)
-  p = arb_bits(x)
+  p = bits(x)
   if p == 0
     if isexact(x)
       return x
@@ -338,19 +365,18 @@ function expand!(x::arb, max_radius_2exp::Int)
     end
   end
   q = div(p, 2)
-  y = arb_round(x, q)
+  y = round(x, q)
   while radiuslttwopower(y, max_radius_2exp)
     q = div(q, 2)
     set!(x, y)
-    y = arb_round!(y, y, q)
+    y = round!(y, y, q)
   end
   @assert radiuslttwopower(x, max_radius_2exp)
+  x.parent = parent_type(typeof(x))(bits(x))
   return x
 end
 
-function expand(x::arb, max_radius_2exp::Int)
-  #@show x
-  #@show max_radius_2exp
+function expand(x::Union{arb, acb}, max_radius_2exp::Int)
   z = deepcopy(x)
   expand!(z, max_radius_2exp)
   return z
