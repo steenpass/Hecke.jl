@@ -362,7 +362,8 @@ function expand!(x::Union{arb, acb}, max_radius_2exp::Int)
     return x
   end
   z = deepcopy(x)
-  p = bits(x)
+  @show p
+  #p = bits(x)
   q = div(p, 2)
   if q < 2
     return x
