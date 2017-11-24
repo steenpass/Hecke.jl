@@ -1350,7 +1350,6 @@ function conjugates_arb(x::nf_elem, abs_tol::Int = 32)
   conjugates = Array{acb}(r1 + 2*r2)
   target_tol = abs_tol
 
-
   while true
     prec_too_low = false
     c = conjugate_data_arb_2(K, abs_tol)
@@ -1521,8 +1520,18 @@ function conjugates_arb_log(x::nf_elem, abs_tol::Int)
       continue
     end
 
+    global _DEBUG
+
     for i in 1:r1 + r2
-      expand!(z[i], -target_tol)
+      @show z[i]
+      @show -target_tol
+      zz = deepcopy(z[i])
+      try 
+        expand!(z[i], -target_tol)
+      catch e
+        push!(_DEBUG, (zz, -target_tol))
+        error("Adsdsd")
+      end
       @assert radiuslttwopower(z[i], -target_tol)
     end
     return z

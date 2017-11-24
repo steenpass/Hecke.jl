@@ -348,28 +348,38 @@ function set!(z::acb, x::acb)
   return z
 end
 
+global _DEBUG = []
+
 function expand!(x::Union{arb, acb}, max_radius_2exp::Int)
-  if rel_accuracy(x) < 0
-    # Radius has less precision then the midpoint
-    # Think of 0.100001 +/- 10
-    # Reducing the precision of the midpoint won't help.
+#  if rel_accuracy(x) < 0
+#    # Radius has less precision then the midpoint
+#    # Think of 0.100001 +/- 10
+#    # Reducing the precision of the midpoint won't help.
+#    return x
+#  end
+  global _DEBUG
+  if isexact(x)
     return x
   end
   z = deepcopy(x)
   p = bits(x)
-  if p == 0
-    if isexact(x)
-      return x
-    else
-      throw(error("Something is wrong in expand! for element $x"))
-    end
-  end
   q = div(p, 2)
+  if q < 2
+    return x
+  end
+  @show q
   y = round(x, q)
-  while radiuslttwopower(y, max_radius_2exp)
+  while radiuslttwopower(y, max_radius_2exp) && q > 4
+    @assert q > 2
     q = div(q, 2)
     set!(x, y)
-    y = round!(y, y, q)
+    try 
+      y = round!(y, y, q)
+    catch e
+      @show "here"
+      push!(_DEBUG, (z, max_radius_2exp))
+      rethrow(e)
+    end
   end
   @assert radiuslttwopower(x, max_radius_2exp)
   x.parent = parent_type(typeof(x))(bits(x))
