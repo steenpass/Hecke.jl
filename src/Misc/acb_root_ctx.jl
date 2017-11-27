@@ -185,7 +185,7 @@ function _roots(x::Union{fmpq_poly, fmpz_poly}, abs_tol = 32, initial_prec = 0, 
     end
 
   wp = wp * 2
-    if wp > 2^16
+    if wp > 2^17
       error("Something wrong")
     end
   end
@@ -252,8 +252,8 @@ function _roots(x::Union{fmpq_poly, fmpz_poly}, roots::Ptr{acb_struct}, abs_tol 
     end
 
   wp = wp * 2
-    if wp > 2^16
-      error("Aborting since required precision is > 2^16")
+    if wp > 2^18
+      error("Aborting since required precision is > 2^18")
     end
   end
          ccall((:_acb_vec_sort_pretty, :libarb), Void,
@@ -348,42 +348,30 @@ function set!(z::acb, x::acb)
   return z
 end
 
-global _DEBUG = []
-
 function expand!(x::Union{arb, acb}, max_radius_2exp::Int)
-#  if rel_accuracy(x) < 0
-#    # Radius has less precision then the midpoint
-#    # Think of 0.100001 +/- 10
-#    # Reducing the precision of the midpoint won't help.
-#    return x
-#  end
-  global _DEBUG
+  if rel_accuracy(x) < 0
+    # Radius has less precision then the midpoint
+    # Think of 0.100001 +/- 10
+    # Reducing the precision of the midpoint won't help.
+    return x
+  end
   if isexact(x)
     return x
   end
   z = deepcopy(x)
-  @show p
-  #p = bits(x)
+  p = bits(x)
   q = div(p, 2)
   if q < 2
     return x
   end
-  @show q
   y = round(x, q)
   while radiuslttwopower(y, max_radius_2exp) && q > 4
-    @assert q > 2
     q = div(q, 2)
     set!(x, y)
-    try 
-      y = round!(y, y, q)
-    catch e
-      @show "here"
-      push!(_DEBUG, (z, max_radius_2exp))
-      rethrow(e)
-    end
+    y = round!(y, y, q)
   end
+  x.parent = parent_type(typeof(x))(max(2, bits(x)))
   @assert radiuslttwopower(x, max_radius_2exp)
-  x.parent = parent_type(typeof(x))(bits(x))
   return x
 end
 

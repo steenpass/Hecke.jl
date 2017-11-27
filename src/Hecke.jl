@@ -219,58 +219,46 @@ function conjugate_data_arb(K::AnticNumberField)
 end
 
 function conjugate_data_arb_2(K::AnticNumberField, p::Int)
+  already_set = false
+  local c
   try
     c = _get_nf_conjugate_data_arb_2(K)::Dict{Int, acb_roots}
-    if haskey(c, p)
-      return c[p]
-    else
-      rootc = conjugate_data_arb(K)
-      q = rootc.prec
-      while q < p
-        refine(rootc)
-        q = rootc.prec
-      end
-      @assert p <= q
-      rall = deepcopy(rootc.roots)
-      rreal = deepcopy(rootc.real_roots)
-      rcomplex = deepcopy(rootc.complex_roots)
-      for z in rall
-        expand!(z, -p)
-      end
-      for z in rreal
-        expand!(z, -p)
-      end
-      for z in rcomplex
-        expand!(z, -p)
-      end
-      c[p] = acb_roots(p, rall, rreal, rcomplex)
-      return c[p]::acb_roots
-    end
+    already_set = true
   catch
     c = Dict{Int, acb_roots}()
-    rootc = conjugate_data_arb(K)
-    q = rootc.prec
-    while q < p
-      refine(rootc)
-      q = rootc.prec
-    end
-    @assert p <= q
-    rall = deepcopy(rootc.roots)
-    rreal = deepcopy(rootc.real_roots)
-    rcomplex = deepcopy(rootc.complex_roots)
-    for z in rall
-      expand!(z, -p)
-    end
-    for z in rreal
-      expand!(z, -p)
-    end
-    for z in rcomplex
-      expand!(z, -p)
-    end
-    c[p] = acb_roots(p, rall, rreal, rcomplex)
-    _set_nf_conjugate_data_arb_2(K, c)
-    return c[p]::acb_roots
   end
+
+  if already_set && haskey(c, p)
+    return c[p]
+  end
+
+  #if p > 2^18
+  #  Base.show_backtrace(STDOUT, backtrace())
+  #end
+  rootc = conjugate_data_arb(K)
+  q = rootc.prec
+  while q < p
+    refine(rootc)
+    q = rootc.prec
+  end
+  @assert p <= q
+  rall = deepcopy(rootc.roots)
+  rreal = deepcopy(rootc.real_roots)
+  rcomplex = deepcopy(rootc.complex_roots)
+  for z in rall
+    expand!(z, -p)
+  end
+  for z in rreal
+    expand!(z, -p)
+  end
+  for z in rcomplex
+    expand!(z, -p)
+  end
+  c[p] = acb_roots(p, rall, rreal, rcomplex)
+  if !already_set
+    _set_nf_conjugate_data_arb_2(K, c)
+  end
+  return c[p]::acb_roots
 end
 
 function _torsion_units(K::AnticNumberField)
