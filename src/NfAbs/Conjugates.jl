@@ -1,3 +1,33 @@
+export istotally_real, istotally_complex, conjugates, conjugates_real, conjugates_complex, conjugates_log
+
+################################################################################
+#
+#  Totally real/complex predicates
+#
+################################################################################
+
+doc"""
+***
+    istotally_real(K::AnticNumberField) -> Bool
+
+Returns true if and only if $K$ is totally real, that is, if all roots of the
+defining polynomial are real.
+"""
+function istotally_real(K::AnticNumberField)
+  return signature(K)[1] == degree(K)
+end
+
+doc"""
+***
+    istotally_complex(K::AnticNumberField) -> Bool
+
+Returns true if and only if $K$ is totally real, that is, if all roots of the
+defining polynomial are not real.
+"""
+function istotally_complex(K::AnticNumberField)
+  return signature(K)[1] == 0
+end
+
 ################################################################################
 #
 #  Conjugates and real embeddings
@@ -130,9 +160,9 @@ doc"""
 > Every entry `y` of the array returned satisfies
 > `radius(real(y)) < 2^-abs_tol` and `radius(imag(y)) < 2^-abs_tol`.
 """
-function conjugates_comlex(x::nf_elem, abs_tol::Int = 32, T = arb)
+function conjugates_complex(x::nf_elem, abs_tol::Int = 32, T = arb)
   if T === arb
-    return conjugates_arb_real(x, abs_tol)
+    return conjugates_arb_complex(x, abs_tol)
   else
     error("Cannot return real conjugates as type $T")
   end
@@ -141,14 +171,20 @@ end
 function conjugates_arb_complex(x::nf_elem, abs_tol::Int)
   r1, r2 = signature(parent(x))
   c = conjugates_arb(x, abs_tol)
-  z = Array{arb}(r2)
+  z = Vector{acb}(r2)
 
   for i in (r1 + 1):(r1 + r2)
-    z[i] = c[i]
+    z[i - r1] = c[i]
   end
 
   return z
 end
+
+################################################################################
+#
+#  Logarithms of conjugates
+#
+################################################################################
 
 doc"""
 ***
@@ -160,16 +196,23 @@ doc"""
 > 2\log(\lvert \sigma_{r+s}(x)\rvert))$ as elements of type `arb` radius
 > less then `2^-abs_tol`.
 """
+function conjugates_log(x::nf_elem, abs_tol::Int = 32, T = arb)
+  if T === arb
+    return conjugates_arb_log(x, abs_tol)
+  else
+    error("Cannot return real conjugates as type $T")
+  end
+end
+
 function conjugates_arb_log(x::nf_elem, abs_tol::Int)
   K = parent(x)
   c = conjugate_data_arb_roots(K, abs_tol)
   r1 = length(c.real_roots)
   r2 = length(c.complex_roots)
-  d = r1 + 2*r2
+  d = degree(K)
   target_tol = abs_tol
-  #abs_tol = Int(ceil(abs_tol * 1.3))
 
-  # We should replace this using multipoint evaluation of libarb
+  # TODO: Replace this using multipoint evaluation of libarb
   z = Array{arb}(r1 + r2)
   while true
     prec_too_low = false
@@ -180,18 +223,17 @@ function conjugates_arb_log(x::nf_elem, abs_tol::Int)
     xpoly = arb_poly(parent(K.pol)(x), abs_tol)
     RR = ArbField(abs_tol, false)
     for i in 1:r1
-      #z[i] = log(abs(evaluate(parent(K.pol)(x), c.real_roots[i])))
       o = RR()
-      ccall((:arb_poly_evaluate, :libarb), Void, (Ptr{arb}, Ptr{arb_poly}, Ptr{arb}, Int), &o, &xpoly, &c.real_roots[i], abs_tol)
+      ccall((:arb_poly_evaluate, :libarb), Void,
+            (Ref{arb}, Ref{arb_poly}, Ref{arb}, Int),
+            o, xpoly, c.real_roots[i], abs_tol)
       abs!(o, o)
       log!(o, o)
       z[i] = o
 
-      #z[i] = log(abs(evaluate(parent(K.pol)(x),c.real_roots[i])))
       if !isfinite(z[i]) || !radiuslttwopower(z[i], -target_tol)
         abs_tol = 2*abs_tol
         prec_too_low = true
-        #@show "restart in the reals"
         break
       end
     end
@@ -205,17 +247,17 @@ function conjugates_arb_log(x::nf_elem, abs_tol::Int)
     tacb = CC()
     for i in 1:r2
       oo = RR()
-      ccall((:arb_poly_evaluate_acb, :libarb), Void, (Ptr{acb}, Ptr{arb_poly}, Ptr{acb}, Int), &tacb, &xpoly, &c.complex_roots[i], abs_tol)
+      ccall((:arb_poly_evaluate_acb, :libarb), Void,
+            (Ref{acb}, Ref{arb_poly}, Ref{acb}, Int),
+            tacb, xpoly, c.complex_roots[i], abs_tol)
       abs!(oo, tacb)
       log!(oo, oo)
       mul2exp!(oo, oo, 1)
       z[r1 + i] = oo
 
-      #z[r1 + i] = 2*log(abs(evaluate(parent(K.pol)(x), c.complex_roots[i])))
       if !isfinite(z[r1 + i]) || !radiuslttwopower(z[r1 + i], -target_tol)
         abs_tol = 2*abs_tol
         prec_too_low = true
-        #@show "restart in the complex"
         break
       end
     end
@@ -252,6 +294,7 @@ doc"""
 > `2^(-abs_tol)`.
 """
 function minkowski_map(a::nf_elem, abs_tol::Int = 32)
+  # TODO: Rewrite this using conjugates_arb
   K = parent(a)
   A = Array{arb}(degree(K))
   r, s = signature(K)
@@ -288,48 +331,52 @@ function minkowski_map(a::nf_elem, abs_tol::Int = 32)
   return A
 end
 
-function t2(x::nf_elem, abs_tol::Int = 32, ::Type{T} = arb) where T
-  p = 2*abs_tol
-  z = mapreduce(y -> y^2, +, minkowski_map(x, p))
-  while !radiuslttwopower(z, -abs_tol)
-    p = 2 * p
+################################################################################
+#
+#  T_2
+#
+################################################################################
+
+function t2(x::nf_elem, abs_tol::Int = 32, T = arb)
+  if T === arb
+    p = 2*abs_tol
     z = mapreduce(y -> y^2, +, minkowski_map(x, p))
+    while !radiuslttwopower(z, -abs_tol)
+      p = 2 * p
+      z = mapreduce(y -> y^2, +, minkowski_map(x, p))
+    end
+    return z
+  else
+    error("Not yet implemented")
   end
-  return z
 end
 
-doc"""
-    istotally_real(K::AnticNumberField) -> Bool
-
-> Returns true iff $K$ is totally real, ie. if all roots of the
-> defining polynomial are real.
-"""
-function istotally_real(K::AnticNumberField)
-  return signature(K)[1] == degree(K)
-end
-
-
 ############################################################################
-#signs
+#
+#  Signs of real embeddings
+#
 ############################################################################
-doc"""
-***
-    _signs(a::nf_elem) -> Array{Int, 1}
-> For a non-zero elements $a$ return the signs of all real embeddings.
-"""
+
+#doc"""
+#***
+#    _signs(a::nf_elem) -> Array{Int, 1}
+#> For a non-zero elements $a$ return the signs of all real embeddings.
+#"""
 function _signs(a::nf_elem)
   if iszero(a)
     error("element must not be zero")
   end
+
   p = 16
   r1, r2 = signature(parent(a))
+
   if r1 == 0
     return Int[]
   end
 
   s = Array{Int}(r1)
   while true
-    c = conjugates_arb(a, p)
+    c = conjugates(a, p)
     done = true
     for i=1:r1
       if contains(reim(c[i])[1], 0)
@@ -337,7 +384,7 @@ function _signs(a::nf_elem)
         done = false
         break
       end
-      s[i] = reim(c[i])[1] > 0 ? 1 : -1
+      s[i] = ispositive(real(c[i])) ? 1 : -1
     end
     if done
       return s
@@ -345,20 +392,21 @@ function _signs(a::nf_elem)
   end
 end
 
-doc"""
-***
-    signs(a::FacElem{nf_elem, AnticNumberField}) -> Array{Int, 1}
-> For a non-zero elements $a$ in factored form,
-> return the signs of all real embeddings.
-"""
+#doc"""
+#***
+#    signs(a::FacElem{nf_elem, AnticNumberField}) -> Array{Int, 1}
+#> For a non-zero elements $a$ in factored form,
+#> return the signs of all real embeddings.
+#"""
 function _signs(a::FacElem{nf_elem, AnticNumberField})
   r1, r2 = signature(base_ring(a))
   if r1 == 0
     return Int[]
   end
+
   s = ones(Int, r1)
 
-  for (k,e) = a.fac
+  for (k, e) = a.fac
     if iseven(e)
       continue
     end
@@ -366,5 +414,3 @@ function _signs(a::FacElem{nf_elem, AnticNumberField})
   end
   return s
 end
-
-
