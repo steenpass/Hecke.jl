@@ -13,6 +13,12 @@ else
   global const p_start = 2^60
 end
 
+if :libantic in names(Nemo, true)
+  global const _libantic = :libantic
+else
+  global const _libantic = :libflint
+end
+
 ################################################################################
 #
 # convenience ...
@@ -905,14 +911,14 @@ end
 
 function gen!(r::nf_elem)
    a = parent(r)
-   ccall((:nf_elem_gen, :libflint), Void,
+   ccall((:nf_elem_gen, _libantic), Void,
          (Ptr{nf_elem}, Ptr{AnticNumberField}), &r, &a)
    return r
 end
 
 function one!(r::nf_elem)
    a = parent(r)
-   ccall((:nf_elem_one, :libflint), Void,
+   ccall((:nf_elem_one, _libantic), Void,
          (Ptr{nf_elem}, Ptr{AnticNumberField}), &r, &a)
    return r
 end
@@ -942,14 +948,14 @@ function norm_div(a::nf_elem, d::fmpz, nb::Int)
    #   adressed in c
    de = denominator(a)
    n = degree(parent(a))
-   ccall((:nf_elem_norm_div, :libflint), Void,
+   ccall((:nf_elem_norm_div, _libantic), Void,
          (Ptr{fmpq}, Ptr{nf_elem}, Ptr{AnticNumberField}, Ptr{fmpz}, UInt),
          &z, &(a*de), &a.parent, &(d*de^n), UInt(nb))
    return z
 end
 
 function sub!(a::nf_elem, b::nf_elem, c::nf_elem)
-   ccall((:nf_elem_sub, :libflint), Void,
+   ccall((:nf_elem_sub, _libantic), Void,
          (Ptr{nf_elem}, Ptr{nf_elem}, Ptr{nf_elem}, Ptr{AnticNumberField}),
 
          &a, &b, &c, &a.parent)
@@ -1134,7 +1140,7 @@ end
 function numerator(a::nf_elem)
    const _one = fmpz(1)
    z = copy(a)
-   ccall((:nf_elem_set_den, :libflint), Void,
+   ccall((:nf_elem_set_den, _libantic), Void,
          (Ptr{nf_elem}, Ptr{fmpz}, Ptr{AnticNumberField}),
          &z, &_one, &a.parent)
    return z
@@ -1937,8 +1943,8 @@ function roots(f::fmpq_poly, R::Nemo.NmodRing)
   return roots(fpp)
 end
 
-function roots(f::fq_nmod_poly) # should be in Nemo and made available for all finite
-                                # fields I guess.
+function roots(f::T) where T <: Union{fq_nmod_poly, fq_poly} # should be in Nemo and
+                                    # made available for all finite fields I guess.
   q = size(base_ring(f))
   x = gen(parent(f))
   if degree(f) < q
@@ -1948,7 +1954,7 @@ function roots(f::fq_nmod_poly) # should be in Nemo and made available for all f
   end
   f = gcd(f, x)
   l = factor(f).fac
-  return fq_nmod[-trailing_coefficient(x) for x = keys(l) if degree(x)==1]
+  return elem_type(base_ring(f))[-trailing_coefficient(x) for x = keys(l) if degree(x)==1]
 end
 
 function roots(f::PolyElem)
