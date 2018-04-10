@@ -97,7 +97,6 @@ Returns the degree of $\mathcal O$.
 """
 degree(O::NfOrd) = degree(O.nf)
 
-
 ################################################################################
 #
 #  "Assure" functions for fields

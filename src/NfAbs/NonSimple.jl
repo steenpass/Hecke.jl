@@ -489,3 +489,59 @@ function msubst(f::Generic.MPoly{fmpq}, v::Array{NfAbsNSElem, 1})
   end
   return r
 end
+
+#
+
+mutable struct NfOrdNS <: AbsNfOrdAbs
+  nf::NfAbsNS
+  basis_nf::Vector{NfAbsNSElem}    # Basis as array of number field elements
+  basis_ord#::Vector{NfOrdElem}    # Basis as array of order elements
+  basis_mat::fmpq_mat              # Basis matrix of order wrt basis of K
+  basis_mat_inv::fmpq_mat          # Inverse of basis matrix
+  gen_index::fmpq                  # The det of basis_mat_inv as fmpq
+  index::fmpz                      # The det of basis_mat_inv
+
+  function NfOrdNS(b::Vector{NfAbsNSElem})
+    z = new()
+    z.nf = parent(b[1])
+    z.basis_nf = b
+    z.basis_mat = basis_mat(b)
+    z.basis_mat_inv = inv(z.basis_mat)
+    return z
+  end
+end
+
+function basis_mat(A::Array{NfAbsNSElem, 1})
+  @assert length(A) > 0
+  n = length(A)
+  d = degree(parent(A[1]))
+
+  M = zero_matrix(FlintQQ, n, d)
+
+  deno = one(FlintZZ)
+  dummy = one(FlintZZ)
+
+  for i in 1:n
+    elem_to_mat_row!(M, i, A[i])
+  end
+  return M
+end
+
+mutable struct NfOrdNSElem <: AbsNfOrdAbsElem
+  elem_in_nf::NfAbsNSElem
+  elem_in_basis::Vector{fmpz}
+  has_coord::Bool
+  parent::NfOrdNS
+
+  function NfOrdNSElem(O::NfOrdNS, x::NfAbsNSElem)
+    z = new()
+    z.parent = O
+    z.elem_in_nf = x
+    return z
+  end
+end
+
+function EquationOrder(K::NfAbsNS)
+  b = basis(K)
+  return NfOrdNS(b)
+end

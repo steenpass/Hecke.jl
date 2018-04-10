@@ -529,6 +529,8 @@ mutable struct FacElem{B, S}
   end
 end
 
+abstract type AbsNfOrdAbs <: Ring end
+
 ################################################################################
 #
 #  NfOrdSet/NfOrd
@@ -559,7 +561,7 @@ const NfOrdSetID = Dict{AnticNumberField, NfOrdSet}()
 
 export NfOrd
 
-mutable struct NfOrd <: Ring
+mutable struct NfOrd <: AbsNfOrdAbs
   nf::AnticNumberField
   basis_nf::Vector{nf_elem}        # Basis as array of number field elements
   basis_ord#::Vector{NfOrdElem}    # Basis as array of order elements
@@ -683,9 +685,11 @@ const NfOrdID = Dict{Tuple{AnticNumberField, FakeFmpqMat}, NfOrd}()
 #
 ################################################################################
 
+abstract type AbsNfOrdAbsElem <: RingElem end
+
 export NfOrdElem
 
-mutable struct NfOrdElem <: RingElem
+mutable struct NfOrdElem <: AbsNfOrdAbsElem
   elem_in_nf::nf_elem
   elem_in_basis::Vector{fmpz}
   has_coord::Bool
