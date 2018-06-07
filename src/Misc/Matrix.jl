@@ -1514,3 +1514,22 @@ function _solve_unique(A::T, B::T) where {S <: FieldElem, T <: MatElem{S}}
   @assert B*X == A
   return X
 end
+
+################################################################################
+#
+#  Denominator
+#
+################################################################################
+
+function denominator(M::fmpq_mat)
+  if rows(M) == 0 || cols(M) == 0
+    return one(FlintQQ)
+  end
+  d = one(FlintZZ)
+  for i in 1:rows(M)
+    for j in 1:cols(M)
+      d = lcm(d, denominator(M[i, j]))
+    end
+  end
+  return d
+end

@@ -22,7 +22,12 @@ function cleanvect(M::T, v::T) where {T}
     ind=1
     while M[i,ind]==0
       ind+=1
+      #if ind > cols(M)
+      #  # I found a zero row
+      #  return v
+      #end
     end
+
     if iszero(w[1,ind])
       continue
     end
